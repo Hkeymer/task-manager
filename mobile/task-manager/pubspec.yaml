@@ -1,0 +1,19 @@
+name: task_manager
+description: A task manager Flutter app integrated with provided API.
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: ">=2.18.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.0.5
+  http: ^0.13.6
+  flutter_secure_storage: ^8.0.0
+  flutter_dotenv: ^5.0.2
+  intl: ^0.18.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true
