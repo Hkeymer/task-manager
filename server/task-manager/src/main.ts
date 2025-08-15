@@ -33,8 +33,11 @@ async function bootstrap() {
   app.use(helmet());
   app.use(morgan('dev'));
 
-  const PORT = process.env.PORT || 3000;
-  await app.listen(PORT);
-  console.log(`🚀 App corriendo en http://localhost:${PORT}`);
+  const PORT = process.env.PORT || 5000;
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor corriendo en http://192.168.1.3:${PORT}`);
+  });
 }
+
 bootstrap();

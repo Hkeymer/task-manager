@@ -7,6 +7,11 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+    try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print("No se pudo cargar .env: $e");
+  }
   await dotenv.load(fileName: ".env");
   runApp(MyApp());
 }

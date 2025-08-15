@@ -5,17 +5,18 @@ class AuthProvider extends ChangeNotifier{
   final ApiService _api = ApiService();
   bool _authenticated = false;
   bool get isAuthenticated => _authenticated;
+
   Future<bool> login(String email, String password) async{
     final res = await _api.login(email,password);
-    if(res['status']==200){
+    if(res['status']==200 || res['status']==201){
       _authenticated = true;
       notifyListeners();
       return true;
     }
     return false;
   }
-  Future<bool> register(String email, String password) async{
-    final res = await _api.register(email,password);
+  Future<bool> register(String email, String password, String name) async{
+    final res = await _api.register(email,password,name);
     return res['status']==201 || res['status']==200;
   }
   Future<void> logout() async{
