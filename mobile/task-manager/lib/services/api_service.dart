@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../exceptions/auth_exception.dart';
 
 class ApiService {
   final _storage = FlutterSecureStorage();
@@ -26,25 +27,45 @@ class ApiService {
 
   Future<http.Response> _request(String method, String path,
       {Map<String, dynamic>? body, bool retry = true}) async {
-    String? token = await getAccessToken();
-    final uri = Uri.parse('$baseUrl$path');
-    final headers = defaultHeaders(token);
-    http.Response res;
-    if (method == 'GET')
-      res = await http.get(uri, headers: headers);
-    else if (method == 'POST')
-      res = await http.post(uri, headers: headers, body: json.encode(body));
-    else if (method == 'PATCH')
-      res = await http.patch(uri, headers: headers, body: json.encode(body));
-    else if (method == 'DELETE')
-      res = await http.delete(uri, headers: headers);
-    else
-      throw Exception('Unsupported method');
-    if (res.statusCode == 401 && retry) {
-      final ok = await _tryRefresh();
-      if (ok) return _request(method, path, body: body, retry: false);
+    try {
+      String? token = await getAccessToken();
+      final uri = Uri.parse('$baseUrl$path');
+      final headers = defaultHeaders(token);
+
+      http.Response res;
+
+      if (method == 'GET') {
+        res = await http
+            .get(uri, headers: headers)
+            .timeout(const Duration(seconds: 10));
+      } else if (method == 'POST') {
+        res = await http
+            .post(uri, headers: headers, body: json.encode(body))
+            .timeout(const Duration(seconds: 10));
+      } else if (method == 'PATCH') {
+        res = await http
+            .patch(uri, headers: headers, body: json.encode(body))
+            .timeout(const Duration(seconds: 10));
+      } else if (method == 'DELETE') {
+        res = await http
+            .delete(uri, headers: headers)
+            .timeout(const Duration(seconds: 10));
+      } else {
+        throw Exception('Unsupported method');
+      }
+
+      if (res.statusCode == 401 && retry) {
+        final ok = await _tryRefresh();
+        if (ok) return _request(method, path, body: body, retry: false);
+      }
+
+      return res;
+    } catch (e) {
+      return http.Response(
+        json.encode({'error': 'Error de conexión: $e'}),
+        500,
+      );
     }
-    return res;
   }
 
   Future<bool> _tryRefresh() async {
@@ -56,7 +77,7 @@ class ApiService {
         body: json.encode({'refresh': refresh}));
     if (res.statusCode == 200 || res.statusCode == 201) {
       final j = json.decode(res.body);
-      await saveTokens(j['accessToken'], j['refreshToken']);
+      await saveTokens(j['tokens']['accessToken'], j['tokens']['refreshToken']);
       return true;
     } else {
       await clearTokens();
@@ -73,13 +94,45 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final res = await _request('POST', '/api/v1/auth/login',
-        body: {'email': email, 'password': password}, retry: false);
+  try {
+    final res = await _request(
+      'POST',
+      '/api/v1/auth/login',
+      body: {'email': email, 'password': password},
+      retry: false,
+    );
+
+    print("Login response: ${res.statusCode} - ${res.body}");
+
     if (res.statusCode == 200 || res.statusCode == 201) {
       final j = json.decode(res.body);
-      await saveTokens(j['accessToken'], j['refreshToken']);
+
+      if (j['tokens'] != null) {
+        final access = j['tokens']['accessToken'];
+        final refresh = j['tokens']['refreshToken'];
+
+        if (access != null && refresh != null) {
+          await saveTokens(access, refresh);
+          return {'status': res.statusCode, 'body': res.body};
+        }
+      }
+
+      throw AuthException("El servidor no envió tokens válidos.");
+    } else if (res.statusCode == 400 || res.statusCode == 401) {
+      throw AuthException("Credenciales inválidas.");
+    } else {
+      throw AuthException("Error inesperado (${res.statusCode}).");
     }
-    return {'status': res.statusCode, 'body': res.body};
+  } catch (e) {
+    if (e is AuthException) rethrow;
+    throw AuthException("No se pudo conectar con el servidor.");
+  }
+}
+
+
+  Future<Map<String, dynamic>?> getUser() async {
+    final data = await _storage.read(key: 'user');
+    return data != null ? json.decode(data) : null;
   }
 
   Future<Map<String, dynamic>> logout() async {
