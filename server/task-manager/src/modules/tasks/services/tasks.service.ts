@@ -12,7 +12,7 @@ import {
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async validateOwnership(userId: number, taskId: number) {
     // Solo traemos el task sin relaciones, suficiente para validar propiedad
@@ -26,7 +26,6 @@ export class TasksService {
   }
 
   async createTask(userId: number, data: CreateTaskDto) {
-    // Busca la categoría "Sin categoría" del usuario
     const defaultCategory = await this.prisma.category.findFirst({
       where: { userId, name: 'Sin categoría' },
     });
@@ -48,31 +47,48 @@ export class TasksService {
     });
   }
 
-  async updateTask(userId: number, taskId: number, dto: UpdateTaskDto) {
+  async getTaskById(userId: number, taskId: number) {
     await this.validateOwnership(userId, taskId);
-    return this.prisma.task.update({
-      where: { id: taskId },
-      data: dto,
-    });
+    return this.prisma.task.findUnique({ where: { id: taskId } });
   }
 
-  async deleteTask(userId: number, taskId: number) {
-    await this.validateOwnership(userId, taskId);
-    return this.prisma.task.delete({ where: { id: taskId } });
-  }
-
-  async findTaskById(userId: number, taskId: number) {
-    const task = await this.prisma.task.findUnique({
-      where: { id: taskId },
+  async getTasksByUser(userId: number) {
+    return this.prisma.task.findMany({
+      where: { userId },
       include: { category: true, user: true },
     });
-    if (!task) throw new NotFoundException('Task not found');
-    if (task.userId !== userId)
-      throw new ForbiddenException('You do not have permission');
-    return task;
   }
 
-  async listTasks(userId: number, query: ListTasksQueryDto) {
+  async getTasksByCategory(userId: number, categoryId: number) {
+    return this.prisma.task.findMany({
+      where: { categoryId, userId },
+      include: { category: true, user: true },
+    });
+  }
+
+  getTasksIsCompleted(userId: number) {
+    return this.prisma.task.findMany({
+      where: { isCompleted: true, userId },
+      include: { category: true, user: true },
+    });
+  }
+
+  getTasksIsNotCompleted(userId: number) {
+    return this.prisma.task.findMany({
+      where: { isCompleted: false, userId },
+      include: { category: true, user: true },
+    });
+  }
+
+  async getlistFavorites(userId: number) {
+    return this.prisma.task.findMany({
+      where: { favoritedBy: { some: { id: userId } } },
+      include: { category: true, user: true },
+    });
+  }
+
+
+  async getAllTasks(userId: number, query: ListTasksQueryDto) {
     const { page = 1, limit = 10, search, categoryId, onlyFavorites } = query;
     const skip = (page - 1) * limit;
 
@@ -113,19 +129,22 @@ export class TasksService {
     };
   }
 
-  async listFavorites(userId: number) {
-    return this.prisma.task.findMany({
-      where: { favoritedBy: { some: { id: userId } } },
-      include: { category: true, user: true },
+
+
+  async updateTask(userId: number, taskId: number, dto: UpdateTaskDto) {
+    await this.validateOwnership(userId, taskId);
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: dto,
     });
   }
 
-  async listMyTasks(userId: number) {
-    return this.prisma.task.findMany({
-      where: { userId },
-      include: { category: true, user: true },
-    });
+  async deleteTask(userId: number, taskId: number) {
+    await this.validateOwnership(userId, taskId);
+    return this.prisma.task.delete({ where: { id: taskId } });
   }
+
+
 
   async toggleIsCompleted(userId: number, taskId: number) {
     const task = await this.validateOwnership(userId, taskId);

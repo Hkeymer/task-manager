@@ -36,7 +36,7 @@ async function bootstrap() {
   const PORT = process.env.PORT || 5000;
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor corriendo en http://192.168.1.3:${PORT}`);
+    console.log(`Servidor corriendo en http://${process.env.HOST}:${PORT}`);
   });
 }
 

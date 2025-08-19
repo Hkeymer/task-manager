@@ -20,6 +20,20 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('profile')
+  async getProfile(@Req() req) {
+    return this.authService.getProfile(req.user.id);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('update-profile')
+  async updateProfile(@Req() req, @Body() data: Partial<RegisterAuthDto>) {
+    return this.authService.updateProfile(req.user.id, data);
+  }
+
   @Post('refresh')
   async refresh(@Body() body: { userId: number; refreshToken: string }) {
     return this.authService.refreshTokens(body.userId, body.refreshToken);

@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
@@ -24,7 +25,7 @@ export class AuthService {
   async register(dto: RegisterAuthDto) {
     const { email, password, name, role } = dto;
     const userExists = await this.usersService.findByEmail(email);
-    if (userExists) throw new UnauthorizedException('User already exists');
+    if (userExists) throw new ConflictException('User already exists');
 
     const userRole = role ?? Role.USER;
 
@@ -47,6 +48,7 @@ export class AuthService {
       };
     } catch (error) {
       console.error('Error en register:', error);
+      if (error instanceof ConflictException) throw error;
       throw new InternalServerErrorException('Error interno al crear usuario');
     }
   }
@@ -75,6 +77,7 @@ export class AuthService {
       };
     } catch (error) {
       console.error('Error en login:', error);
+      if (error instanceof UnauthorizedException) throw error;
       throw new InternalServerErrorException('Error interno en login');
     }
   }
@@ -106,15 +109,15 @@ export class AuthService {
     const payload = { id: userId, email, role };
 
     const accessToken = await this.jwtService.sign(payload, {
-      secret: jwtConstants.accessSecret,
-      expiresIn: jwtConstants.accessExpiresIn,
+      secret: jwtConstants.accessSecret(),
+      expiresIn: jwtConstants.accessExpiresIn(),
     });
 
     const refreshToken = await this.jwtService.sign(
       { sub: userId },
       {
-        secret: jwtConstants.refreshSecret,
-        expiresIn: jwtConstants.refreshExpiresIn,
+        secret: jwtConstants.refreshSecret(),
+        expiresIn: jwtConstants.refreshExpiresIn(),
       },
     );
 

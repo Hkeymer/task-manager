@@ -1,6 +1,23 @@
-class Category{
-  final String id;
+class Category {
+  final int id;
   final String name;
-  Category({required this.id, required this.name});
-  factory Category.fromJson(Map<String,dynamic> j)=>Category(id: j['id'].toString(), name: j['name'] ?? '');
+  final int userId;
+
+  Category({
+    required this.id,
+    required this.name,
+    required this.userId,
+  });
+
+  factory Category.fromJson(Map<String, dynamic> json) => Category(
+        id: json['id'],
+        name: json['name'] ?? '',
+        userId: json['userId'],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'userId': userId,
+      };
 }

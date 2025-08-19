@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:task_manager/providers/category_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/task_provider.dart';
 import 'screens/login_screen.dart';
@@ -22,6 +23,7 @@ class MyApp extends StatelessWidget{
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
       ],
       child: MaterialApp(
         title: 'task-manager',
@@ -33,14 +35,18 @@ class MyApp extends StatelessWidget{
     );
   }
 }
-class Root extends StatelessWidget{
+class Root extends StatelessWidget {
   @override
-  Widget build(BuildContext context){
-    final auth = Provider.of<AuthProvider>(context);
-    if(auth.isAuthenticated){
-      return HomeScreen();
-    } else {
-      return LoginScreen();
-    }
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isAuthenticated) {
+          return HomeScreen();
+        } else {
+          return LoginScreen();
+        }
+      },
+    );
   }
 }
+

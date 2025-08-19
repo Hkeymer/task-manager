@@ -26,11 +26,47 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 @UseGuards(JwtAuthGuard)
 @Controller('tasks')
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(private readonly tasksService: TasksService) { }
 
   @Post()
   async create(@Req() req, @Body() dto: CreateTaskDto) {
     return this.tasksService.createTask(req.user.id, dto);
+  }
+
+
+  @Get()
+  async findAll(@Req() req, @Query() query: ListTasksQueryDto) {
+    return this.tasksService.getAllTasks(req.user.id, query);
+  }
+
+  @Get('my-tasks')
+  async listMyTasks(@Req() req) {
+    return this.tasksService.getTasksByUser(req.user.id);
+  }
+
+  @Get(':id')
+  async findOne(@Req() req, @Param('id', ParseIntPipe) id: number) {
+    return this.tasksService.getTaskById(req.user.id, id);
+  }
+
+  @Get('completed')
+  async listCompleted(@Req() req) {
+    return this.tasksService.getTasksIsCompleted(req.user.id);
+  }
+
+  @Get('category/:id')
+  async listByCategory(@Req() req, @Param('id', ParseIntPipe) id: number) {
+    return this.tasksService.getTasksByCategory(req.user.id, id);
+  }
+
+  @Get('pending')
+  async listNotCompleted(@Req() req) {
+    return this.tasksService.getTasksIsNotCompleted(req.user.id);
+  }
+
+  @Get('favorites')
+  async listFavorites(@Req() req) {
+    return this.tasksService.getlistFavorites(req.user.id);
   }
 
   @Patch(':id')
@@ -45,21 +81,6 @@ export class TasksController {
   @Delete(':id')
   async remove(@Req() req, @Param('id', ParseIntPipe) id: number) {
     return this.tasksService.deleteTask(req.user.id, id);
-  }
-
-  @Get()
-  async findAll(@Req() req, @Query() query: ListTasksQueryDto) {
-    return this.tasksService.listTasks(req.user.id, query);
-  }
-
-  @Get('my-tasks')
-  async listMyTasks(@Req() req) {
-    return this.tasksService.listMyTasks(req.user.id);
-  }
-
-  @Get('favorites')
-  async listFavorites(@Req() req) {
-    return this.tasksService.listFavorites(req.user.id);
   }
 
   @Patch(':id/completed')

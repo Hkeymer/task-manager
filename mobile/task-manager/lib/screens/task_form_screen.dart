@@ -1,104 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/task_provider.dart';
-import '../services/api_service.dart';
+import 'package:task_manager/providers/category_provider.dart';
+import 'package:task_manager/providers/task_provider.dart';
+import 'package:task_manager/widgets/category_dropdown.dart';
+import '../models/task.dart';
 
 class TaskFormScreen extends StatefulWidget {
-  final String? taskId;
-  TaskFormScreen({this.taskId});
+  final Task? task;
+  const TaskFormScreen({this.task, Key? key}) : super(key: key);
+
   @override
   _TaskFormScreenState createState() => _TaskFormScreenState();
 }
 
 class _TaskFormScreenState extends State<TaskFormScreen> {
-  final _api = ApiService();
-  final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _desc = TextEditingController();
-  bool _loading = false;
+  int? _selectedCategory;
+  bool get isEditing => widget.task != null;
 
-  List<dynamic> _categories = [];
-  dynamic _selectedCategory;
-
+  @override
   void initState() {
     super.initState();
-    _loadCategories();
+    final cateProv = Provider.of<CategoryProvider>(context, listen: false);
+
+    if (isEditing) _loadTask();
+    _selectedCategory ??=
+        cateProv.categories.isNotEmpty ? cateProv.categories.first['id'] : null;
   }
 
-  Future<void> _loadCategories() async {
-    setState(() => _loading = true);
-    try {
-      final categories = await _api.getCategories();
-      print(categories);
-      setState(() {
-        _categories = categories;
-        _selectedCategory = categories.isNotEmpty ? categories[0] : null;
-      });
-    } catch (e) {
-      print("Error cargando categorías: $e");
-    } finally {
-      setState(() => _loading = false);
-    }
+  void _loadTask() {
+    _title.text = widget.task!.title;
+    _desc.text = widget.task!.description ?? '';
+    _selectedCategory = widget.task!.categoryId;
   }
 
   @override
   Widget build(BuildContext context) {
-    final prov = Provider.of<TaskProvider>(context);
+    final taskProv = Provider.of<TaskProvider>(context);
+
     return Scaffold(
-        appBar: AppBar(title: Text('Crear tarea')),
-        body: Padding(
-            padding: EdgeInsets.all(16),
-            child: Form(
-                key: _formKey,
-                child: Column(children: [
-                  TextFormField(
-                      controller: _title,
-                      decoration: InputDecoration(labelText: 'Título'),
-                      validator: (v) =>
-                          v != null && v.isNotEmpty ? null : 'Requerido'),
-                  SizedBox(height: 12),
-                  TextFormField(
-                      controller: _desc,
-                      decoration: InputDecoration(labelText: 'Descripción')),
-                  SizedBox(height: 20),
-                  DropdownButtonFormField<dynamic>(
-                    value: _selectedCategory,
-                    items: _categories.map((category) {
-                      return DropdownMenuItem(
-                        value: category,
-                        child: Text(category['name']),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCategory = value;
-                      });
-                    },
-                    decoration: InputDecoration(labelText: 'Categoría'),
-                  ),
-                  SizedBox(
-                    height: 20,
-                  ),
-                  ElevatedButton(
-                      onPressed: _loading
-                          ? null
-                          : () async {
-                              if (!_formKey.currentState!.validate()) return;
-                              setState(() => _loading = true);
-                              final ok = await prov.addTask(
-                                  _title.text.trim(), _desc.text.trim(), null);
-                              setState(() => _loading = false);
-                              if (ok)
-                                Navigator.pop(context);
-                              else
-                                showDialog(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                        content: Text('Error al crear tarea')));
-                            },
-                      child: _loading
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text('Guardar'))
-                ]))));
+      appBar: AppBar(
+        title: Text(isEditing ? 'Editar tarea' : 'Nueva tarea'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.save),
+            onPressed: () async {
+              if (isEditing) {
+                await taskProv.updateTask(widget.task!.id, {
+                  'title': _title.text,
+                  'description': _desc.text,
+                  'categoryId': _selectedCategory
+                });
+              } else {
+                await taskProv.addTask(
+                    _title.text, _desc.text, _selectedCategory);
+              }
+              Navigator.pop(context, true);
+            },
+          )
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _title,
+              decoration: InputDecoration(labelText: 'Título'),
+            ),
+            SizedBox(height: 12),
+            CategoryDropdown(
+              selectedCategory: _selectedCategory,
+              onChanged: (val) => setState(() => _selectedCategory = val),
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: _desc,
+              decoration: InputDecoration(labelText: 'Descripción'),
+              maxLines: 5,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

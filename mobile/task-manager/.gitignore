@@ -6,3 +6,4 @@ build/
 .idea/
 .vscode/
 .env
+.dart_tool/
